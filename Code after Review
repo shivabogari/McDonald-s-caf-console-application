@@ -1,0 +1,1108 @@
+git commit -m "Revised code after review"
+import java.util.Scanner;
+
+public class CafeConsoleApp {
+
+    private static Scanner scanner = new Scanner(System.in);
+
+    private static MenuManagement menuManagement = new MenuManagement();
+    private static OrderManagement orderManagement = new OrderManagement();
+    private static StaffSchedulingSystem staffSchedulingSystem = new StaffSchedulingSystem();
+
+    public static void main(String[] args) {
+        while (true) {
+            System.out.println("\n=== Welcome to McDonald's Café Console Application ===");
+            System.out.println("1. Menu Management");
+            System.out.println("2. Order Management");
+            System.out.println("3. Staff Scheduling");
+            System.out.println("0. Exit");
+            System.out.print("Choose an option: ");
+
+            String choice = scanner.nextLine();
+
+            switch (choice) {
+                case "1":
+                    menuManagement.runMenuManagement();
+                    break;
+                case "2":
+                    orderManagement.runOrderManagement();
+                    break;
+                case "3":
+                    staffSchedulingSystem.runStaffScheduling();
+                    break;
+                case "0":
+                    System.out.println("Exiting application. Goodbye!");
+                    scanner.close();
+                    System.exit(0);
+                default:
+                    System.out.println("Invalid choice. Please try again.");
+            }
+        }
+    }
+}
+
+import java.io.*;
+import java.util.*;
+
+// Main class to start the menu system (to hold the single instance)
+public class MenuManagement {
+
+    public static void main(String[] args) {
+        MenuManagement menuManagement = new MenuManagement();
+        menuManagement.runMenuManagement();
+    }
+
+    public void runMenuManagement() {
+        MenuController controller = new MenuController();
+        controller.start();
+    }
+}
+// Model: Represents a Menu Item
+class MenuItem {
+    private String name;
+    private double price;
+    private String category;
+    private String ingredients;
+    private boolean isAvailable;
+
+    public MenuItem(String name, double price, String category, String ingredients, boolean isAvailable) {
+        this.name = name;
+        this.price = price;
+        this.category = category;
+        this.ingredients = ingredients;
+        this.isAvailable = isAvailable;
+    }
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+    public String getIngredients() { return ingredients; }
+    public void setIngredients(String ingredients) { this.ingredients = ingredients; }
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { this.isAvailable = available; }
+
+    @Override
+    public String toString() {
+        return String.format("Name: %s | Price: $%.2f | Category: %s | Ingredients: %s | Available: %s",
+                name, price, category, ingredients, isAvailable ? "Yes" : "No");
+    }
+}
+
+// View: Handles Display and Input
+class MenuView {
+    private Scanner scanner = new Scanner(System.in);
+
+    public void displayMenu(List<MenuItem> menuItems) {
+        if (menuItems.isEmpty()) {
+            System.out.println("No menu items available.");
+        } else {
+            System.out.println("\nMenu Items:");
+            for (MenuItem item : menuItems) {
+                System.out.println(item);
+            }
+        }
+    }
+
+    public void showMessage(String message) {
+        System.out.println(message);
+    }
+
+    public String getInput(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine();
+    }
+}
+
+// Controller: Coordinates Actions
+class MenuController {
+    private List<MenuItem> menuItems;
+    private MenuView view;
+
+    public MenuController() {
+        menuItems = new ArrayList<>();
+        view = new MenuView();
+    }
+
+    // Start the menu system loop
+    public void start() {
+        while (true) {
+            view.showMessage("\nMenu Management System:");
+            view.showMessage("1. Add Menu Item");
+            view.showMessage("2. Update Menu Item");
+            view.showMessage("3. Delete Menu Item");
+            view.showMessage("4. Mark Item as Out of Stock");
+            view.showMessage("5. Mark Item as Available");
+            view.showMessage("6. Search for a Menu Item");
+            view.showMessage("7. Filter Menu by Dietary Requirements");
+            view.showMessage("8. Import Menu from File");
+            view.showMessage("9. Export Menu to File");
+            view.showMessage("10. Exit");
+
+            String choice = view.getInput("Choose an option: ");
+
+            switch (choice) {
+                case "1":
+                    addMenuItem();
+                    break;
+                case "2":
+                    updateMenuItem();
+                    break;
+                case "3":
+                    deleteMenuItem();
+                    break;
+                case "4":
+                    markOutOfStock();
+                    break;
+                case "5":
+                    markAvailable();
+                    break;
+                case "6":
+                    searchMenuItem();
+                    break;
+                case "7":
+                    filterMenu();
+                    break;
+                case "8":
+                    importMenuFromFile();
+                    break;
+                case "9":
+                    exportMenuToFile();
+                    break;
+                case "10":
+                    view.showMessage("Exiting the system.");
+                    return;
+                default:
+                    view.showMessage("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    // All public so they can be called from outside if needed
+    public void addMenuItem() {
+        String name = view.getInput("Enter item name: ");
+        double price = readDouble("Enter price: ");
+        String category = view.getInput("Enter category: ");
+        String ingredients = view.getInput("Enter ingredients: ");
+        menuItems.add(new MenuItem(name, price, category, ingredients, true));
+        view.showMessage("Menu item added successfully.");
+    }
+
+    public void updateMenuItem() {
+        String name = view.getInput("Enter the name of the item to update: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            double price = readDouble("Enter new price: ");
+            String ingredients = view.getInput("Enter new ingredients: ");
+            item.setPrice(price);
+            item.setIngredients(ingredients);
+            view.showMessage("Menu item updated successfully.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void deleteMenuItem() {
+        String name = view.getInput("Enter the name of the item to delete: ");
+        boolean removed = menuItems.removeIf(item -> item.getName().equalsIgnoreCase(name));
+        if (removed) {
+            view.showMessage("Menu item deleted successfully.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void markOutOfStock() {
+        String name = view.getInput("Enter the name of the item to mark as out of stock: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            item.setAvailable(false);
+            view.showMessage("Menu item marked as out of stock.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void markAvailable() {
+        String name = view.getInput("Enter the name of the item to mark as available: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            item.setAvailable(true);
+            view.showMessage("Menu item marked as available.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void searchMenuItem() {
+        String name = view.getInput("Enter the name of the item to search: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            view.showMessage(item.toString());
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void filterMenu() {
+        String filter = view.getInput("Enter dietary requirement to filter by (e.g., vegetarian): ");
+        List<MenuItem> filteredItems = new ArrayList<>();
+        for (MenuItem item : menuItems) {
+            if (item.getIngredients().toLowerCase().contains(filter.toLowerCase())) {
+                filteredItems.add(item);
+            }
+        }
+        view.displayMenu(filteredItems);
+    }
+
+    public void importMenuFromFile() {
+        String filePath = view.getInput("Enter file path to import: ");
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 5) {
+                    String name = parts[0];
+                    double price = Double.parseDouble(parts[1]);
+                    String category = parts[2];
+                    String ingredients = parts[3];
+                    boolean isAvailable = Boolean.parseBoolean(parts[4]);
+                    menuItems.add(new MenuItem(name, price, category, ingredients, isAvailable));
+                }
+            }
+            view.showMessage("Menu imported successfully.");
+        } catch (IOException | NumberFormatException e) {
+            view.showMessage("Error reading file: " + e.getMessage());
+        }
+    }
+
+    public void exportMenuToFile() {
+        String filePath = view.getInput("Enter file path to export: ");
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
+            for (MenuItem item : menuItems) {
+                bw.write(item.getName() + "," + item.getPrice() + "," + item.getCategory() + "," +
+                        item.getIngredients() + "," + item.isAvailable());
+                bw.newLine();
+            }
+            view.showMessage("Menu exported successfully.");
+        } catch (IOException e) {
+            view.showMessage("Error writing file: " + e.getMessage());
+        }
+    }
+
+    // Helper method: find menu item by name (case-insensitive)
+    public MenuItem findMenuItemByName(String name) {
+        for (MenuItem item : menuItems) {
+            if (item.getName().equalsIgnoreCase(name)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    // Getter for menuItems list, if needed
+    public List<MenuItem> getMenuItems() {
+        return menuItems;
+    }
+
+    // Helper method to safely read double input
+    private double readDouble(String prompt) {
+        while (true) {
+            try {
+                String input = view.getInput(prompt);
+                return Double.parseDouble(input);
+            } catch (NumberFormatException e) {
+                view.showMessage("Invalid number format. Please enter a valid decimal number.");
+            }
+        }
+    }
+}
+import java.util.*;
+
+// Main Class: OrderManagement
+public class OrderManagement {
+    private OrderController controller;
+
+    public OrderManagement() {
+        controller = new OrderController();
+    }
+
+    // Method to start the order management system
+    public void runOrderManagement() {
+        controller.start();
+    }
+
+    public static void main(String[] args) {
+        OrderManagement orderManagement = new OrderManagement();
+        orderManagement.runOrderManagement();
+    }
+}
+
+// Model: Represents an Order and an Order Item
+class OrderItem {
+    private String itemName;
+    private int quantity;
+    private double price;
+
+    public OrderItem(String itemName, int quantity) {
+        this.itemName = itemName;
+        this.quantity = quantity;
+        this.price = generateRandomPrice(); 
+    }
+
+    public String getItemName() {
+        return itemName;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    private double generateRandomPrice() {
+        return Math.round((10 + Math.random() * 40) * 100.0) / 100.0; 6
+    }
+
+    @Override
+    public String toString() {
+        return itemName + " x " + quantity + " @ $" + price + " each";
+    }
+}
+
+class Order {
+    private int orderId;
+    private List<OrderItem> items;
+    private String status;
+    private double totalCost;
+
+    public Order(int orderId) {
+        this.orderId = orderId;
+        this.items = new ArrayList<>();
+        this.status = "Pending";
+    }
+
+    public int getOrderId() {
+        return orderId;
+    }
+
+    public List<OrderItem> getItems() {
+        return items;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public double getTotalCost() {
+        return totalCost;
+    }
+
+    public void updateTotalCost() {
+        totalCost = items.stream().mapToDouble(item -> item.getPrice() * item.getQuantity()).sum();
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder details = new StringBuilder("Order ID: " + orderId + "\nStatus: " + status + "\nItems:\n");
+        for (OrderItem item : items) {
+            details.append(item).append("\n");
+        }
+        details.append("Total Cost: $").append(totalCost);
+        return details.toString();
+    }
+}
+
+// View: Handles User Interaction
+class OrderView {
+    private Scanner scanner = new Scanner(System.in);
+
+    public void displayMessage(String message) {
+        System.out.println(message);
+    }
+
+    public String getInput(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine();
+    }
+
+    public void displayOrderDetails(Order order) {
+        System.out.println(order);
+    }
+}
+
+// Controller: Coordinates User Actions
+class OrderController {
+    private List<Order> orders;
+    private OrderView view;
+    private int nextOrderId;
+
+    public OrderController() {
+        orders = new ArrayList<>();
+        view = new OrderView();
+        nextOrderId = 1;
+    }
+
+    public void start() {
+        while (true) {
+            view.displayMessage("\nOrder Management System:");
+            view.displayMessage("1. Place an Order");
+            view.displayMessage("2. Modify an Existing Order");
+            view.displayMessage("3. Cancel an Order");
+            view.displayMessage("4. View Order Summary");
+            view.displayMessage("5. Process Payment for an Order");
+            view.displayMessage("6. Track Order Status");
+            view.displayMessage("7. Handle Special Requests");
+            view.displayMessage("8. Generate Order Receipt");
+            view.displayMessage("9. Daily Order Report");
+            view.displayMessage("10. Exit");
+
+            String choice = view.getInput("Choose an option: ");
+
+            switch (choice) {
+                case "1":
+                    placeOrder();
+                    break;
+                case "2":
+                    modifyOrder();
+                    break;
+                case "3":
+                    cancelOrder();
+                    break;
+                case "4":
+                    viewOrderSummaryById();
+                    break;
+                case "5":
+                    processPayment();
+                    break;
+                case "6":
+                    trackOrderStatus();
+                    break;
+                case "7":
+                    handleSpecialRequests();
+                    break;
+                case "8":
+                    generateOrderReceipt();
+                    break;
+                case "9":
+                    generateDailyReport();
+                    break;
+                case "10":
+                    view.displayMessage("Exiting the system.");
+                    return;
+                default:
+                    view.displayMessage("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    private void placeOrder() {
+        Order order = new Order(nextOrderId++);
+        while (true) {
+            String itemName = view.getInput("Enter item name (or type 'done' to finish): ");
+            if (itemName.equalsIgnoreCase("done")) break;
+            int quantity = Integer.parseInt(view.getInput("Enter quantity: "));
+            order.getItems().add(new OrderItem(itemName, quantity));
+        }
+        order.updateTotalCost();
+        orders.add(order);
+        view.displayMessage("Order placed successfully! Order ID: " + order.getOrderId());
+    }
+
+    private void modifyOrder() {
+        int orderId = Integer.parseInt(view.getInput("Enter Order ID to modify: "));
+        Order order = findOrderById(orderId);
+        if (order == null) {
+            view.displayMessage("Order ID not found.");
+            return;
+        }
+
+        while (true) {
+            view.displayOrderDetails(order);
+            String itemName = view.getInput("Enter item name to add/remove (or 'done' to finish): ");
+            if (itemName.equalsIgnoreCase("done")) break;
+            Optional<OrderItem> item = order.getItems().stream().filter(i -> i.getItemName().equalsIgnoreCase(itemName)).findFirst();
+            if (item.isPresent()) {
+                int newQuantity = Integer.parseInt(view.getInput("Enter new quantity (0 to remove): "));
+                if (newQuantity == 0) order.getItems().remove(item.get());
+                else item.get().setQuantity(newQuantity);
+            } else {
+                int quantity = Integer.parseInt(view.getInput("Enter quantity: "));
+                order.getItems().add(new OrderItem(itemName, quantity));
+            }
+            order.updateTotalCost();
+            view.displayMessage("Order modified successfully.");
+        }
+    }
+
+    private void cancelOrder() {
+        int orderId = Integer.parseInt(view.getInput("Enter Order ID to cancel: "));
+        boolean removed = orders.removeIf(order -> order.getOrderId() == orderId);
+        if (removed) {
+            view.displayMessage("Order canceled successfully.");
+        } else {
+            view.displayMessage("Order ID not found.");
+        }
+    }
+
+    private void viewOrderSummaryById() {
+        int orderId = Integer.parseInt(view.getInput("Enter Order ID to view: "));
+        Order order = findOrderById(orderId);
+        if (order == null) {
+            view.displayMessage("Order ID not found.");
+        } else {
+            view.displayOrderDetails(order);
+        }
+    }
+
+    private void processPayment() {
+        int orderId = Integer.parseInt(view.getInput("Enter Order ID to process payment: "));
+        Order order = findOrderById(orderId);
+        if (order == null) {
+            view.displayMessage("Order ID not found.");
+            return;
+        }
+        order.setStatus("Completed");
+        view.displayMessage("Payment processed successfully. Order marked as Completed.");
+    }
+
+    private void trackOrderStatus() {
+        int orderId = Integer.parseInt(view.getInput("Enter Order ID to track: "));
+        Order order = findOrderById(orderId);
+        if (order == null) {
+            view.displayMessage("Order ID not found.");
+        } else {
+            view.displayMessage("Order Status: " + order.getStatus());
+        }
+    }
+
+    private void handleSpecialRequests() {
+        String request = view.getInput("Enter the special request: ");
+        view.displayMessage("Special request noted: " + request);
+    }
+
+    private void generateOrderReceipt() {
+        int orderId = Integer.parseInt(view.getInput("Enter Order ID for receipt: "));
+        Order order = findOrderById(orderId);
+        if (order == null) {
+            view.displayMessage("Order ID not found.");
+            return;
+        }
+        view.displayMessage("Order Receipt:");
+        view.displayOrderDetails(order);
+    }
+
+    private void generateDailyReport() {
+        if (orders.isEmpty()) {
+            view.displayMessage("No orders for today.");
+            return;
+        }
+        double totalRevenue = orders.stream().mapToDouble(Order::getTotalCost).sum();
+        view.displayMessage("Daily Report:");
+        view.displayMessage("Total Orders: " + orders.size());
+        view.displayMessage("Total Revenue: $" + totalRevenue);
+    }
+
+    private Order findOrderById(int orderId) {
+        return orders.stream().filter(order -> order.getOrderId() == orderId).findFirst().orElse(null);
+    }
+}
+import java.time.*;
+import java.util.*;
+
+class StaffMember {
+    private String name;
+    private String role;
+    private List<LocalDate> unavailableDates = new ArrayList<>();
+    private Map<LocalDate, Shift> assignedShifts = new HashMap<>();
+
+    public StaffMember(String name, String role) {
+        this.name = name;
+        this.role = role;
+    }
+
+    public String getName() { return name; }
+    public String getRole() { return role; }
+
+    public void setUnavailableDates(List<LocalDate> dates) {
+        unavailableDates = dates;
+    }
+
+    public List<LocalDate> getUnavailableDates() {
+        return unavailableDates;
+    }
+
+    public boolean isAvailable(LocalDate date) {
+        return !unavailableDates.contains(date) && !assignedShifts.containsKey(date);
+    }
+
+    public void assignShift(Shift shift) {
+        assignedShifts.put(shift.getDate(), shift);
+    }
+
+    public Map<LocalDate, Shift> getAssignedShifts() {
+        return assignedShifts;
+    }
+
+    public void removeShift(LocalDate date) {
+        assignedShifts.remove(date);
+    }
+
+    @Override
+    public String toString() {
+        return name + " (" + role + ")";
+    }
+}
+
+class Shift {
+    private LocalDate date;
+    private String shiftType;  // e.g. Morning, Evening, Night
+    private StaffMember staff;
+
+    public Shift(LocalDate date, String shiftType, StaffMember staff) {
+        this.date = date;
+        this.shiftType = shiftType;
+        this.staff = staff;
+    }
+
+    public LocalDate getDate() { return date; }
+    public String getShiftType() { return shiftType; }
+    public StaffMember getStaff() { return staff; }
+
+    @Override
+    public String toString() {
+        return date + " - " + shiftType + " shift - " + staff.getName();
+    }
+}
+
+class TimeOffRequest {
+    private StaffMember staff;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private String reason;
+    private boolean approved = false;
+    private boolean reviewed = false;
+
+    public TimeOffRequest(StaffMember staff, LocalDate start, LocalDate end, String reason) {
+        this.staff = staff;
+        this.startDate = start;
+        this.endDate = end;
+        this.reason = reason;
+    }
+
+    public StaffMember getStaff() { return staff; }
+    public LocalDate getStartDate() { return startDate; }
+    public LocalDate getEndDate() { return endDate; }
+    public String getReason() { return reason; }
+    public boolean isApproved() { return approved; }
+    public boolean isReviewed() { return reviewed; }
+
+    public void approve() {
+        approved = true;
+        reviewed = true;
+    }
+
+    public void reject() {
+        approved = false;
+        reviewed = true;
+    }
+
+    @Override
+    public String toString() {
+        return "Request by " + staff.getName() + " from " + startDate + " to " + endDate +
+               " Reason: " + reason + " Approved: " + approved;
+    }
+}
+
+public class StaffSchedulingSystem {
+    private static List<StaffMember> staffList = new ArrayList<>();
+    private static List<TimeOffRequest> timeOffRequests = new ArrayList<>();
+    private static Scanner scanner = new Scanner(System.in);
+
+    public void runStaffScheduling(){
+        System.out.println("=== Staff Scheduling System ===");
+        boolean exit = false;
+        while (!exit) {
+            System.out.println("\nSelect option:");
+            System.out.println("1. Add New Staff Member");
+            System.out.println("2. Update Staff Availability");
+            System.out.println("3. Assign Shifts");
+            System.out.println("4. View Staff Schedule");
+            System.out.println("5. Request Time Off");
+            System.out.println("6. Approve/Reject Time-Off Requests");
+            System.out.println("7. Shift Swapping");
+            System.out.println("8. Schedule Conflict Detection");
+            System.out.println("9. Emergency Shift Replacement");
+            System.out.println("10. Track Staff Attendance (Placeholder)");
+            System.out.println("0. Exit");
+            System.out.print("Choice: ");
+            int choice = Integer.parseInt(scanner.nextLine());
+
+            switch(choice) {
+                case 1: addNewStaffMember(); break;
+                case 2: updateStaffAvailability(); break;
+                case 3: assignShifts(); break;
+                case 4: viewStaffSchedule(); break;
+                case 5: requestTimeOff(); break;
+                case 6: reviewTimeOffRequests(); break;
+                case 7: shiftSwapping(); break;
+                case 8: detectScheduleConflicts(); break;
+                case 9: emergencyShiftReplacement(); break;
+                case 10: trackAttendance(); break;
+                case 0: exit = true; break;
+                default: System.out.println("Invalid choice."); break;
+            }
+        }
+        System.out.println("Exiting system.");
+    }
+
+    // 1. Add New Staff Member
+    private static void addNewStaffMember() {
+        System.out.print("Enter staff name: ");
+        String name = scanner.nextLine();
+        System.out.print("Enter role: ");
+        String role = scanner.nextLine();
+        StaffMember staff = new StaffMember(name, role);
+        staffList.add(staff);
+        System.out.println("Staff member added: " + staff);
+    }
+
+    // 2. Update Staff Availability
+    private static void updateStaffAvailability() {
+        StaffMember staff = selectStaffMember();
+        if (staff == null) return;
+        System.out.println("Enter unavailable dates (yyyy-mm-dd), type 'done' to finish:");
+        List<LocalDate> unavailable = new ArrayList<>();
+        while (true) {
+            String input = scanner.nextLine();
+            if (input.equalsIgnoreCase("done")) break;
+            try {
+                LocalDate date = LocalDate.parse(input);
+                unavailable.add(date);
+            } catch (Exception e) {
+                System.out.println("Invalid date format.");
+            }
+        }
+        staff.setUnavailableDates(unavailable);
+        System.out.println("Updated unavailable dates for " + staff.getName());
+    }
+
+    // 3. Assign Shifts (Simple auto assign based on availability and role)
+    private static void assignShifts() {
+        System.out.print("Enter date to assign shift (yyyy-mm-dd): ");
+        LocalDate date;
+        try {
+            date = LocalDate.parse(scanner.nextLine());
+        } catch(Exception e) {
+            System.out.println("Invalid date.");
+            return;
+        }
+
+        System.out.print("Enter shift type (Morning/Evening/Night): ");
+        String shiftType = scanner.nextLine();
+
+        // Find available staff
+        List<StaffMember> availableStaff = new ArrayList<>();
+        for (StaffMember s : staffList) {
+            if (s.isAvailable(date)) {
+                availableStaff.add(s);
+            }
+        }
+        if (availableStaff.isEmpty()) {
+            System.out.println("No available staff for " + date);
+            return;
+        }
+
+        System.out.println("Available staff:");
+        for (int i=0; i < availableStaff.size(); i++) {
+            System.out.println((i+1) + ". " + availableStaff.get(i));
+        }
+        System.out.print("Select staff to assign shift: ");
+        int idx;
+        try {
+            idx = Integer.parseInt(scanner.nextLine()) - 1;
+            if (idx < 0 || idx >= availableStaff.size()) throw new Exception();
+        } catch (Exception e) {
+            System.out.println("Invalid selection.");
+            return;
+        }
+        StaffMember chosen = availableStaff.get(idx);
+        Shift shift = new Shift(date, shiftType, chosen);
+        chosen.assignShift(shift);
+        System.out.println("Shift assigned: " + shift);
+    }
+
+    // 4. View Staff Schedule
+    private static void viewStaffSchedule() {
+        StaffMember staff = selectStaffMember();
+        if (staff == null) return;
+
+        System.out.println("Shifts for " + staff.getName() + ":");
+        if (staff.getAssignedShifts().isEmpty()) {
+            System.out.println("No assigned shifts.");
+        } else {
+            staff.getAssignedShifts().values().stream()
+                .sorted(Comparator.comparing(Shift::getDate))
+                .forEach(s -> System.out.println(s));
+        }
+    }
+
+    // 5. Request Time Off
+    private static void requestTimeOff() {
+        StaffMember staff = selectStaffMember();
+        if (staff == null) return;
+
+        System.out.print("Enter start date (yyyy-mm-dd): ");
+        LocalDate startDate;
+        LocalDate endDate;
+        try {
+            startDate = LocalDate.parse(scanner.nextLine());
+            System.out.print("Enter end date (yyyy-mm-dd): ");
+            endDate = LocalDate.parse(scanner.nextLine());
+            if (endDate.isBefore(startDate)) {
+                System.out.println("End date must be after start date.");
+                return;
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid date format.");
+            return;
+        }
+
+        System.out.print("Enter reason for time off: ");
+        String reason = scanner.nextLine();
+
+        TimeOffRequest request = new TimeOffRequest(staff, startDate, endDate, reason);
+        timeOffRequests.add(request);
+        System.out.println("Time off requested: " + request);
+    }
+
+    // 6. Approve/Reject Time-Off Requests
+    private static void reviewTimeOffRequests() {
+        List<TimeOffRequest> pendingRequests = new ArrayList<>();
+        for (TimeOffRequest r : timeOffRequests) {
+            if (!r.isReviewed()) {
+                pendingRequests.add(r);
+            }
+        }
+
+        if (pendingRequests.isEmpty()) {
+            System.out.println("No pending time-off requests.");
+            return;
+        }
+
+        for (int i=0; i < pendingRequests.size(); i++) {
+            System.out.println((i+1) + ". " + pendingRequests.get(i));
+        }
+        System.out.print("Select request to review: ");
+        int idx;
+        try {
+            idx = Integer.parseInt(scanner.nextLine()) - 1;
+            if (idx < 0 || idx >= pendingRequests.size()) throw new Exception();
+        } catch (Exception e) {
+            System.out.println("Invalid selection.");
+            return;
+        }
+
+        TimeOffRequest req = pendingRequests.get(idx);
+        System.out.print("Approve (A) or Reject (R)? ");
+        String decision = scanner.nextLine();
+        if (decision.equalsIgnoreCase("A")) {
+            req.approve();
+            System.out.println("Request approved.");
+            // Mark dates unavailable for staff
+            StaffMember staff = req.getStaff();
+            List<LocalDate> unavailable = staff.getUnavailableDates();
+            LocalDate d = req.getStartDate();
+            while (!d.isAfter(req.getEndDate())) {
+                if(!unavailable.contains(d)) {
+                    unavailable.add(d);
+                    staff.removeShift(d); // Remove any assigned shift on these dates
+                }
+                d = d.plusDays(1);
+            }
+            staff.setUnavailableDates(unavailable);
+        } else if (decision.equalsIgnoreCase("R")) {
+            req.reject();
+            System.out.println("Request rejected.");
+        } else {
+            System.out.println("Invalid input.");
+        }
+    }
+
+    // 7. Shift Swapping
+    private static void shiftSwapping() {
+        System.out.println("Shift swapping feature:");
+
+        System.out.println("Select your staff account:");
+        StaffMember staff1 = selectStaffMember();
+        if (staff1 == null) return;
+
+        if (staff1.getAssignedShifts().isEmpty()) {
+            System.out.println("You have no assigned shifts to swap.");
+            return;
+        }
+
+        System.out.println("Your assigned shifts:");
+        List<Shift> shifts1 = new ArrayList<>(staff1.getAssignedShifts().values());
+        for (int i = 0; i < shifts1.size(); i++) {
+            System.out.println((i+1) + ". " + shifts1.get(i));
+        }
+
+        System.out.print("Select shift to swap: ");
+        int shiftIdx;
+        try {
+            shiftIdx = Integer.parseInt(scanner.nextLine()) - 1;
+            if (shiftIdx < 0 || shiftIdx >= shifts1.size()) throw new Exception();
+        } catch (Exception e) {
+            System.out.println("Invalid selection.");
+            return;
+        }
+        Shift shiftToSwap = shifts1.get(shiftIdx);
+
+        System.out.println("Select staff member to swap with:");
+        StaffMember staff2 = selectStaffMember();
+        if (staff2 == null || staff2 == staff1) {
+            System.out.println("Invalid staff selected.");
+            return;
+        }
+
+        if (staff2.getAssignedShifts().isEmpty()) {
+            System.out.println(staff2.getName() + " has no assigned shifts to swap.");
+            return;
+        }
+
+        System.out.println(staff2.getName() + "'s assigned shifts:");
+        List<Shift> shifts2 = new ArrayList<>(staff2.getAssignedShifts().values());
+        for (int i = 0; i < shifts2.size(); i++) {
+            System.out.println((i+1) + ". " + shifts2.get(i));
+        }
+
+        System.out.print("Select shift to swap with: ");
+        int shiftIdx2;
+        try {
+            shiftIdx2 = Integer.parseInt(scanner.nextLine()) - 1;
+            if (shiftIdx2 < 0 || shiftIdx2 >= shifts2.size()) throw new Exception();
+        } catch (Exception e) {
+            System.out.println("Invalid selection.");
+            return;
+        }
+        Shift shiftToSwapWith = shifts2.get(shiftIdx2);
+
+        // Confirm swap
+        System.out.println("Propose swap:");
+        System.out.println(staff1.getName() + " " + shiftToSwap);
+        System.out.println("WITH");
+        System.out.println(staff2.getName() + " " + shiftToSwapWith);
+
+        System.out.print("Manager approval required? (Y/N): ");
+        String approval = scanner.nextLine();
+
+        if (approval.equalsIgnoreCase("Y")) {
+            System.out.println("Manager approved the swap.");
+        } else {
+            System.out.println("Swap not approved by manager.");
+            return;
+        }
+
+        // Perform swap
+        staff1.assignShift(new Shift(shiftToSwapWith.getDate(), shiftToSwapWith.getShiftType(), staff1));
+        staff2.assignShift(new Shift(shiftToSwap.getDate(), shiftToSwap.getShiftType(), staff2));
+
+        staff1.removeShift(shiftToSwap.getDate());
+        staff2.removeShift(shiftToSwapWith.getDate());
+
+        System.out.println("Shift swap completed.");
+    }
+
+    // 8. Schedule Conflict Detection and Resolution (detect overlapping shifts or unavailable dates)
+    private static void detectScheduleConflicts() {
+        System.out.println("Detecting schedule conflicts...");
+        boolean conflictsFound = false;
+        for (StaffMember staff : staffList) {
+            Set<LocalDate> assignedDates = new HashSet<>();
+            for (Shift shift : staff.getAssignedShifts().values()) {
+                LocalDate date = shift.getDate();
+                if (assignedDates.contains(date)) {
+                    System.out.println("Conflict: " + staff.getName() + " has multiple shifts on " + date);
+                    conflictsFound = true;
+                }
+                assignedDates.add(date);
+                if (staff.getUnavailableDates().contains(date)) {
+                    System.out.println("Conflict: " + staff.getName() + " assigned shift on unavailable date " + date);
+                    conflictsFound = true;
+                }
+            }
+        }
+        if (!conflictsFound) {
+            System.out.println("No conflicts detected.");
+        }
+    }
+
+    // 9. Emergency Shift Replacement (find available staff for a given date)
+    private static void emergencyShiftReplacement() {
+        System.out.print("Enter date of emergency shift (yyyy-mm-dd): ");
+        LocalDate date;
+        try {
+            date = LocalDate.parse(scanner.nextLine());
+        } catch (Exception e) {
+            System.out.println("Invalid date.");
+            return;
+        }
+
+        List<StaffMember> availableStaff = new ArrayList<>();
+        for (StaffMember s : staffList) {
+            if (s.isAvailable(date)) {
+                availableStaff.add(s);
+            }
+        }
+
+        if (availableStaff.isEmpty()) {
+            System.out.println("No available staff for emergency shift on " + date);
+        } else {
+            System.out.println("Available staff for emergency shift:");
+            for (StaffMember s : availableStaff) {
+                System.out.println("- " + s);
+            }
+        }
+    }
+
+    // 10. Track Staff Attendance (Placeholder: just display message, since this needs more infrastructure)
+    private static void trackAttendance() {
+        System.out.println("Tracking staff attendance feature coming soon...");
+    }
+
+    // Helper to select staff
+    private static StaffMember selectStaffMember() {
+        if (staffList.isEmpty()) {
+            System.out.println("No staff available.");
+            return null;
+        }
+        System.out.println("Select staff member:");
+        for (int i=0; i < staffList.size(); i++) {
+            System.out.println((i+1) + ". " + staffList.get(i));
+        }
+        System.out.print("Choice: ");
+        int idx;
+        try {
+            idx = Integer.parseInt(scanner.nextLine()) - 1;
+            if (idx < 0 || idx >= staffList.size()) throw new Exception();
+            return staffList.get(idx);
+        } catch (Exception e) {
+            System.out.println("Invalid selection.");
+            return null;
+        }
+    }
+}
