@@ -485,5 +485,834 @@ public class StaffSchedulingSystem {
         }
     }
 }
+import java.io.*;
+import java.util.*;
+import java.text.SimpleDateFormat;
+
+// Main class to run the Order Management System
+public class OrderManagement {
+    public static void main(String[] args) {
+        MenuController menuController = new MenuController();
+        OrderController orderController = new OrderController(menuController);
+        orderController.start();
+    }
+}
+
+// === MODEL CLASSES ===
+
+// Menu Item Model (simplified version from Menu Management)
+class MenuItem {
+    private String name;
+    private double price;
+    private String category;
+    private String ingredients;
+    private boolean isAvailable;
+
+    public MenuItem(String name, double price, String category, String ingredients, boolean isAvailable) {
+        this.name = name;
+        this.price = price;
+        this.category = category;
+        this.ingredients = ingredients;
+        this.isAvailable = isAvailable;
+    }
+    public String getName() { return name; }
+    public double getPrice() { return price; }
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { this.isAvailable = available; }
+
+    @Override
+    public String toString() {
+        return String.format("%s (%.2f) - %s - %s", name, price, category, isAvailable ? "Available" : "Out of Stock");
+    }
+}
+
+// Order Item - to hold item and quantity
+class OrderItem {
+    private MenuItem menuItem;
+    private int quantity;
+
+    public OrderItem(MenuItem menuItem, int quantity) {
+        this.menuItem = menuItem;
+        this.quantity = quantity;
+    }
+    public MenuItem getMenuItem() { return menuItem; }
+    public int getQuantity() { return quantity; }
+    public void setQuantity(int quantity) { this.quantity = quantity; }
+
+    public double getTotalPrice() {
+        return menuItem.getPrice() * quantity;
+    }
+
+    @Override
+    public String toString() {
+        return menuItem.getName() + " x " + quantity + " = $" + String.format("%.2f", getTotalPrice());
+    }
+}
+
+// Order Status Enum
+enum OrderStatus {
+    PLACED, IN_PROGRESS, READY, COMPLETED, CANCELED
+}
+
+// Order Model
+class Order {
+    private static int nextOrderId = 1;
+
+    private int orderId;
+    private List<OrderItem> items;
+    private OrderStatus status;
+    private Date orderDate;
+    private boolean paymentProcessed;
+    private String specialRequests;
+
+    public Order() {
+        this.orderId = nextOrderId++;
+        this.items = new ArrayList<>();
+        this.status = OrderStatus.PLACED;
+        this.orderDate = new Date();
+        this.paymentProcessed = false;
+        this.specialRequests = "";
+    }
+
+    public int getOrderId() { return orderId; }
+    public List<OrderItem> getItems() { return items; }
+    public OrderStatus getStatus() { return status; }
+    public void setStatus(OrderStatus status) { this.status = status; }
+    public boolean isPaymentProcessed() { return paymentProcessed; }
+    public void setPaymentProcessed(boolean processed) { this.paymentProcessed = processed; }
+    public Date getOrderDate() { return orderDate; }
+    public String getSpecialRequests() { return specialRequests; }
+    public void setSpecialRequests(String requests) { this.specialRequests = requests; }
+
+    public double calculateTotal() {
+        double total = 0;
+        for (OrderItem item : items) {
+            total += item.getTotalPrice();
+        }
+        return total;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Order ID: ").append(orderId).append("\n");
+        sb.append("Status: ").append(status).append("\n");
+        sb.append("Date: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(orderDate)).append("\n");
+        if (!specialRequests.isEmpty()) {
+            sb.append("Special Requests: ").append(specialRequests).append("\n");
+        }
+        sb.append("Items:\n");
+        for (OrderItem item : items) {
+            sb.append("  ").append(item).append("\n");
+        }
+        sb.append("Total: $").append(String.format("%.2f", calculateTotal())).append("\n");
+        sb.append("Payment Processed: ").append(paymentProcessed ? "Yes" : "No");
+        return sb.toString();
+    }
+}
+
+// === VIEW ===
+class OrderView {
+    private Scanner scanner = new Scanner(System.in);
+
+    public void displayMessage(String msg) {
+        System.out.println(msg);
+    }
+
+    public void displayOrderSummary(Order order) {
+        System.out.println("----- ORDER SUMMARY -----");
+        System.out.println(order);
+        System.out.println("-------------------------");
+    }
+
+    public void displayMenuItems(List<MenuItem> items) {
+        if (items.isEmpty()) {
+            System.out.println("No items to display.");
+            return;
+        }
+        System.out.println("----- MENU ITEMS -----");
+        for (MenuItem item : items) {
+            System.out.println(item);
+        }
+        System.out.println("----------------------");
+    }
+
+    public String getInput(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine().trim();
+    }
+
+    public int getIntInput(String prompt) {
+        while (true) {
+            try {
+                return Integer.parseInt(getInput(prompt));
+            } catch (NumberFormatException e) {
+                System.out.println("Invalid number. Try again.");
+            }
+        }
+    }
+}
+
+// === CONTROLLERS ===
+
+// Simplified Menu Controller - preloaded items for demo and availability check
+class MenuController {
+    private List<MenuItem> menuItems;
+
+    public MenuController() {
+        menuItems = new ArrayList<>();
+        // Preload some menu items
+        menuItems.add(new MenuItem("Burger", 5.99, "Fast Food", "Beef, Bun, Lettuce", true));
+        menuItems.add(new MenuItem("Veggie Wrap", 4.99, "Vegetarian", "Lettuce, Tomato, Wrap", true));
+        menuItems.add(new MenuItem("Gluten-Free Salad", 6.99, "Salad", "Lettuce, Tomato, Cucumber", true));
+        menuItems.add(new MenuItem("French Fries", 2.99, "Sides", "Potato, Salt", true));
+        menuItems.add(new MenuItem("Chicken Nuggets", 4.50, "Fast Food", "Chicken, Bread Crumbs", true));
+    }
+
+    public List<MenuItem> getMenuItems() {
+        return menuItems;
+    }
+
+    public MenuItem findMenuItemByName(String name) {
+        for (MenuItem item : menuItems) {
+            if (item.getName().equalsIgnoreCase(name)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    public boolean isAvailable(String name) {
+        MenuItem item = findMenuItemByName(name);
+        return item != null && item.isAvailable();
+    }
+
+    public void updateAvailability(String name, boolean available) {
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            item.setAvailable(available);
+        }
+    }
+}
+
+// Order Controller - handles all order use cases
+class OrderController {
+    private Map<Integer, Order> orders;
+    private OrderView view;
+    private MenuController menuController;
+
+    public OrderController(MenuController menuController) {
+        this.menuController = menuController;
+        this.orders = new HashMap<>();
+        this.view = new OrderView();
+    }
+
+    public void start() {
+        while (true) {
+            view.displayMessage("\nORDER MANAGEMENT SYSTEM");
+            view.displayMessage("1. Place an Order");
+            view.displayMessage("2. Modify an Existing Order");
+            view.displayMessage("3. Cancel an Order");
+            view.displayMessage("4. View Order Summary");
+            view.displayMessage("5. Process Payment for an Order");
+            view.displayMessage("6. Track Order Status");
+            view.displayMessage("7. Handle Special Requests");
+            view.displayMessage("8. Generate Order Receipt");
+            view.displayMessage("9. Generate Daily Order Report");
+            view.displayMessage("10. Exit");
+
+            String choice = view.getInput("Select option: ");
+            switch (choice) {
+                case "1": placeOrder(); break;
+                case "2": modifyOrder(); break;
+                case "3": cancelOrder(); break;
+                case "4": viewOrderSummary(); break;
+                case "5": processPayment(); break;
+                case "6": trackOrderStatus(); break;
+                case "7": handleSpecialRequests(); break;
+                case "8": generateReceipt(); break;
+                case "9": generateDailyReport(); break;
+                case "10": 
+                    view.displayMessage("Exiting system.");
+                    return;
+                default: view.displayMessage("Invalid option, try again.");
+            }
+        }
+    }
+
+    // UC1: Place an Order
+    private void placeOrder() {
+        Order order = new Order();
+        view.displayMessage("Place your order by selecting items. Type 'done' to finish.");
+        while (true) {
+            view.displayMenuItems(menuController.getMenuItems());
+            String itemName = view.getInput("Enter item name (or 'done'): ");
+            if (itemName.equalsIgnoreCase("done")) break;
+
+            MenuItem menuItem = menuController.findMenuItemByName(itemName);
+            if (menuItem == null) {
+                view.displayMessage("Item not found.");
+                continue;
+            }
+            if (!menuItem.isAvailable()) {
+                view.displayMessage("Item is currently out of stock.");
+                continue;
+            }
+
+            int qty = view.getIntInput("Enter quantity: ");
+            if (qty <= 0) {
+                view.displayMessage("Quantity must be positive.");
+                continue;
+            }
+
+            // Check if already in order, then increase quantity
+            boolean found = false;
+            for (OrderItem oi : order.getItems()) {
+                if (oi.getMenuItem().getName().equalsIgnoreCase(itemName)) {
+                    oi.setQuantity(oi.getQuantity() + qty);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                order.getItems().add(new OrderItem(menuItem, qty));
+            }
+            view.displayMessage("Added " + qty + " x " + itemName);
+        }
+
+        if (order.getItems().isEmpty()) {
+            view.displayMessage("No items added. Order cancelled.");
+            return;
+        }
+
+        orders.put(order.getOrderId(), order);
+        view.displayMessage("Order placed successfully! Your Order ID is " + order.getOrderId());
+    }
+
+    // UC2: Modify an Existing Order (if not confirmed)
+    private void modifyOrder() {
+        int id = view.getIntInput("Enter Order ID to modify: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        if (order.isPaymentProcessed()) {
+            view.displayMessage("Cannot modify an order that has been paid.");
+            return;
+        }
+        if (order.getStatus() == OrderStatus.CANCELED) {
+            view.displayMessage("Order is canceled and cannot be modified.");
+            return;
+        }
+
+        while (true) {
+            view.displayOrderSummary(order);
+            view.displayMessage("1. Add Item\n2. Remove Item\n3. Done");
+            String choice = view.getInput("Select option: ");
+            if (choice.equals("3")) break;
+
+            switch (choice) {
+                case "1":
+                    view.displayMenuItems(menuController.getMenuItems());
+                    String itemName = view.getInput("Enter item name to add: ");
+                    MenuItem menuItem = menuController.findMenuItemByName(itemName);
+                    if (menuItem == null) {
+                        view.displayMessage("Item not found.");
+                        continue;
+                    }
+                    if (!menuItem.isAvailable()) {
+                        view.displayMessage("Item is out of stock.");
+                        continue;
+                    }
+                    int qty = view.getIntInput("Enter quantity: ");
+                    if (qty <= 0) {
+                        view.displayMessage("Quantity must be positive.");
+                        continue;
+                    }
+                    boolean found = false;
+                    for (OrderItem oi : order.getItems()) {
+                        if (oi.getMenuItem().getName().equalsIgnoreCase(itemName)) {
+                            oi.setQuantity(oi.getQuantity() + qty);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        order.getItems().add(new OrderItem(menuItem, qty));
+                    }
+                    view.displayMessage("Item added.");
+                    break;
+
+                case "2":
+                    if (order.getItems().isEmpty()) {
+                        view.displayMessage("No items to remove.");
+                        continue;
+                    }
+                    String remName = view.getInput("Enter item name to remove: ");
+                    Iterator<OrderItem> iter = order.getItems().iterator();
+                    boolean removed = false;
+                    while (iter.hasNext()) {
+                        OrderItem oi = iter.next();
+                        if (oi.getMenuItem().getName().equalsIgnoreCase(remName)) {
+                            iter.remove();
+                            removed = true;
+                            break;
+                        }
+                    }
+                    if (removed) {
+                        view.displayMessage("Item removed.");
+                    } else {
+                        view.displayMessage("Item not found in order.");
+                    }
+                    break;
+                default:
+                    view.displayMessage("Invalid option.");
+            }
+        }
+        view.displayMessage("Modification complete.");
+    }
+
+    // UC3: Cancel an Order (before processed)
+    private void cancelOrder() {
+        int id = view.getIntInput("Enter Order ID to cancel: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        if (order.getStatus() == OrderStatus.CANCELED) {
+            view.displayMessage("Order is already canceled.");
+            return;
+        }
+        if (order.getStatus() == OrderStatus.COMPLETED) {
+            view.displayMessage("Cannot cancel a completed order.");
+            return;
+        }
+        order.setStatus(OrderStatus.CANCELED);
+        // Optionally update inventory if needed here
+        view.displayMessage("Order canceled successfully.");
+    }
+
+    // UC4: View Order Summary
+    private void viewOrderSummary() {
+        int id = view.getIntInput("Enter Order ID to view summary: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        view.displayOrderSummary(order);
+    }
+
+    // UC5: Process Payment
+    private void processPayment() {
+        int id = view.getIntInput("Enter Order ID to process payment: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        if (order.isPaymentProcessed()) {
+            view.displayMessage("Payment already processed.");
+            return;
+        }
+        if (order.getStatus() == OrderStatus.CANCELED) {
+            view.displayMessage("Cannot process payment for canceled order.");
+            return;
+        }
+
+        view.displayOrderSummary(order);
+        String paymentMethod = view.getInput("Enter payment method (cash/card/other): ");
+        // For simplicity, assume payment always succeeds
+        order.setPaymentProcessed(true);
+        order.setStatus(OrderStatus.COMPLETED);
+        view.displayMessage("Payment processed successfully via " + paymentMethod + ". Order completed.");
+    }
+
+    // UC6: Track Order Status
+    private void trackOrderStatus() {
+        int id = view.getIntInput("Enter Order ID to track: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        view.displayMessage("Order ID " + id + " Status: " + order.getStatus());
+    }
+
+    // UC7: Handle Special Requests
+    private void handleSpecialRequests() {
+        int id = view.getIntInput("Enter Order ID to add special requests: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        String requests = view.getInput("Enter special requests (e.g., allergen-free, custom instructions): ");
+        order.setSpecialRequests(requests);
+        view.displayMessage("Special requests updated.");
+    }
+
+    // UC8: Generate Order Receipt
+    private void generateReceipt() {
+        int id = view.getIntInput("Enter Order ID to generate receipt: ");
+        Order order = orders.get(id);
+        if (order == null) {
+            view.displayMessage("Order not found.");
+            return;
+        }
+        if (!order.isPaymentProcessed()) {
+            view.displayMessage("Payment not processed. Receipt not generated.");
+            return;
+        }
+        String receipt = buildReceipt(order);
+        view.displayMessage(receipt);
+        // Optionally, write to file
+        try {
+            String filename = "OrderReceipt_" + order.getOrderId() + ".txt";
+            BufferedWriter writer = new BufferedWriter(new FileWriter(filename));
+            writer.write(receipt);
+            writer.close();
+            view.displayMessage("Receipt saved to file: " + filename);
+        } catch (IOException e) {
+            view.displayMessage("Error saving receipt to file.");
+        }
+    }
+
+    private String buildReceipt(Order order) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("***** ORDER RECEIPT *****\n");
+        sb.append("Order ID: ").append(order.getOrderId()).append("\n");
+        sb.append("Date: ").append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(order.getOrderDate())).append("\n");
+        if (!order.getSpecialRequests().isEmpty()) {
+            sb.append("Special Requests: ").append(order.getSpecialRequests()).append("\n");
+        }
+        sb.append("------------------------\n");
+        for (OrderItem item : order.getItems()) {
+            sb.append(item).append("\n");
+        }
+        sb.append("------------------------\n");
+        sb.append("Total Paid: $").append(String.format("%.2f", order.calculateTotal())).append("\n");
+        sb.append("Payment Method: Processed\n");
+        sb.append("************************");
+        return sb.toString();
+    }
+
+    // UC9: Integration with Menu Management (Inventory updates)
+    // This demo version does not adjust inventory quantities but could be extended to.
+    // We simulate availability updates in modify and place order by checking isAvailable.
+
+    // UC10: Daily Order Report
+    private void generateDailyReport() {
+        int totalOrders = 0;
+        double totalRevenue = 0;
+        Map<String, Integer> popularItems = new HashMap<>();
+
+        Date today = new Date();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+
+        for (Order order : orders.values()) {
+            // Consider only completed orders today (for simplicity, all orders)
+            if (order.getStatus() == OrderStatus.COMPLETED) {
+                totalOrders++;
+                totalRevenue += order.calculateTotal();
+                for (OrderItem item : order.getItems()) {
+                    popularItems.put(item.getMenuItem().getName(),
+                        popularItems.getOrDefault(item.getMenuItem().getName(), 0) + item.getQuantity());
+                }
+            }
+        }
+
+        view.displayMessage("----- DAILY ORDER REPORT -----");
+        view.displayMessage("Total Orders: " + totalOrders);
+        view.displayMessage("Total Revenue: $" + String.format("%.2f", totalRevenue));
+        view.displayMessage("Popular Menu Items:");
+        popularItems.entrySet()
+            .stream()
+            .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+            .forEach(e -> view.displayMessage(e.getKey() + ": " + e.getValue() + " sold"));
+        view.displayMessage("------------------------------");
+    }
+}
+import java.io.*;
+import java.util.*;
+
+// Main class to start the menu system (to hold the single instance)
+public class MenuManagement {
+
+    public static void main(String[] args) {
+        MenuManagement menuManagement = new MenuManagement();
+        menuManagement.runMenuManagement();
+    }
+
+    public void runMenuManagement() {
+        MenuController controller = new MenuController();
+        controller.start();
+    }
+}
+// Model: Represents a Menu Item
+class MenuItem {
+    private String name;
+    private double price;
+    private String category;
+    private String ingredients;
+    private boolean isAvailable;
+
+    public MenuItem(String name, double price, String category, String ingredients, boolean isAvailable) {
+        this.name = name;
+        this.price = price;
+        this.category = category;
+        this.ingredients = ingredients;
+        this.isAvailable = isAvailable;
+    }
+
+    // Getters and setters
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public double getPrice() { return price; }
+    public void setPrice(double price) { this.price = price; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+    public String getIngredients() { return ingredients; }
+    public void setIngredients(String ingredients) { this.ingredients = ingredients; }
+    public boolean isAvailable() { return isAvailable; }
+    public void setAvailable(boolean available) { this.isAvailable = available; }
+
+    @Override
+    public String toString() {
+        return String.format("Name: %s | Price: $%.2f | Category: %s | Ingredients: %s | Available: %s",
+                name, price, category, ingredients, isAvailable ? "Yes" : "No");
+    }
+}
+
+// View: Handles Display and Input
+class MenuView {
+    private Scanner scanner = new Scanner(System.in);
+
+    public void displayMenu(List<MenuItem> menuItems) {
+        if (menuItems.isEmpty()) {
+            System.out.println("No menu items available.");
+        } else {
+            System.out.println("\nMenu Items:");
+            for (MenuItem item : menuItems) {
+                System.out.println(item);
+            }
+        }
+    }
+
+    public void showMessage(String message) {
+        System.out.println(message);
+    }
+
+    public String getInput(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine();
+    }
+}
+
+// Controller: Coordinates Actions
+class MenuController {
+    private List<MenuItem> menuItems;
+    private MenuView view;
+
+    public MenuController() {
+        menuItems = new ArrayList<>();
+        view = new MenuView();
+    }
+
+    // Start the menu system loop
+    public void start() {
+        while (true) {
+            view.showMessage("\nMenu Management System:");
+            view.showMessage("1. Add Menu Item");
+            view.showMessage("2. Update Menu Item");
+            view.showMessage("3. Delete Menu Item");
+            view.showMessage("4. Mark Item as Out of Stock");
+            view.showMessage("5. Mark Item as Available");
+            view.showMessage("6. Search for a Menu Item");
+            view.showMessage("7. Filter Menu by Dietary Requirements");
+            view.showMessage("8. Import Menu from File");
+            view.showMessage("9. Export Menu to File");
+            view.showMessage("10. Exit");
+
+            String choice = view.getInput("Choose an option: ");
+
+            switch (choice) {
+                case "1":
+                    addMenuItem();
+                    break;
+                case "2":
+                    updateMenuItem();
+                    break;
+                case "3":
+                    deleteMenuItem();
+                    break;
+                case "4":
+                    markOutOfStock();
+                    break;
+                case "5":
+                    markAvailable();
+                    break;
+                case "6":
+                    searchMenuItem();
+                    break;
+                case "7":
+                    filterMenu();
+                    break;
+                case "8":
+                    importMenuFromFile();
+                    break;
+                case "9":
+                    exportMenuToFile();
+                    break;
+                case "10":
+                    view.showMessage("Exiting the system.");
+                    return;
+                default:
+                    view.showMessage("Invalid option. Please try again.");
+            }
+        }
+    }
+
+    // All public so they can be called from outside if needed
+    public void addMenuItem() {
+        String name = view.getInput("Enter item name: ");
+        double price = readDouble("Enter price: ");
+        String category = view.getInput("Enter category: ");
+        String ingredients = view.getInput("Enter ingredients: ");
+        menuItems.add(new MenuItem(name, price, category, ingredients, true));
+        view.showMessage("Menu item added successfully.");
+    }
+
+    public void updateMenuItem() {
+        String name = view.getInput("Enter the name of the item to update: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            double price = readDouble("Enter new price: ");
+            String ingredients = view.getInput("Enter new ingredients: ");
+            item.setPrice(price);
+            item.setIngredients(ingredients);
+            view.showMessage("Menu item updated successfully.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void deleteMenuItem() {
+        String name = view.getInput("Enter the name of the item to delete: ");
+        boolean removed = menuItems.removeIf(item -> item.getName().equalsIgnoreCase(name));
+        if (removed) {
+            view.showMessage("Menu item deleted successfully.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void markOutOfStock() {
+        String name = view.getInput("Enter the name of the item to mark as out of stock: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            item.setAvailable(false);
+            view.showMessage("Menu item marked as out of stock.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void markAvailable() {
+        String name = view.getInput("Enter the name of the item to mark as available: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            item.setAvailable(true);
+            view.showMessage("Menu item marked as available.");
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void searchMenuItem() {
+        String name = view.getInput("Enter the name of the item to search: ");
+        MenuItem item = findMenuItemByName(name);
+        if (item != null) {
+            view.showMessage(item.toString());
+        } else {
+            view.showMessage("Item not found.");
+        }
+    }
+
+    public void filterMenu() {
+        String filter = view.getInput("Enter dietary requirement to filter by (e.g., vegetarian): ");
+        List<MenuItem> filteredItems = new ArrayList<>();
+        for (MenuItem item : menuItems) {
+            if (item.getIngredients().toLowerCase().contains(filter.toLowerCase())) {
+                filteredItems.add(item);
+            }
+        }
+        view.displayMenu(filteredItems);
+    }
+
+    public void importMenuFromFile() {
+        String filePath = view.getInput("Enter file path to import: ");
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                String[] parts = line.split(",");
+                if (parts.length == 5) {
+                    String name = parts[0];
+                    double price = Double.parseDouble(parts[1]);
+                    String category = parts[2];
+                    String ingredients = parts[3];
+                    boolean isAvailable = Boolean.parseBoolean(parts[4]);
+                    menuItems.add(new MenuItem(name, price, category, ingredients, isAvailable));
+                }
+            }
+            view.showMessage("Menu imported successfully.");
+        } catch (IOException | NumberFormatException e) {
+            view.showMessage("Error reading file: " + e.getMessage());
+        }
+    }
+
+    public void exportMenuToFile() {
+        String filePath = view.getInput("Enter file path to export: ");
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
+            for (MenuItem item : menuItems) {
+                bw.write(item.getName() + "," + item.getPrice() + "," + item.getCategory() + "," +
+                        item.getIngredients() + "," + item.isAvailable());
+                bw.newLine();
+            }
+            view.showMessage("Menu exported successfully.");
+        } catch (IOException e) {
+            view.showMessage("Error writing file: " + e.getMessage());
+        }
+    }
+
+    // Helper method: find menu item by name (case-insensitive)
+    public MenuItem findMenuItemByName(String name) {
+        for (MenuItem item : menuItems) {
+            if (item.getName().equalsIgnoreCase(name)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    // Getter for menuItems list, if needed
+    public List<MenuItem> getMenuItems() {
+        return menuItems;
+    }
+
+    // Helper method to safely read double input
+    private double readDouble(String prompt) {
+        while (true) {
+            try {
+                String input = view.getInput(prompt);
+                return Double.parseDouble(input);
+            } catch (NumberFormatException e) {
+                view.showMessage("Invalid number format. Please enter a valid decimal number.");
+            }
+        }
+    }
+}
 
 
